@@ -2,134 +2,143 @@ import tkinter as tk
 from tkinter import filedialog, colorchooser
 from PIL import Image, ImageTk, ImageDraw, ImageFont
 
-font_path = "Elemental End italic.ttf"  # Pour Texte 1 et 2
-font_path_text3 = "Poppins-Bold.ttf"      # Pour Texte 3
+# Chemins de police
+font_path = "Elemental End italic.ttf"   # Pour Texte 1 et Texte 2
+font_path_text3 = "Poppins Bold.ttf"       # Pour Texte 3
 
 FINAL_SIZE = 1080   # Taille finale (1080x1080)
-PREVIEW_SIZE = 500  # Taille de l'aperçu (500x500)
+PREVIEW_SIZE = 500  # Taille du Canvas d'aperçu (500x500)
 
-class SnapshotEditor:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("Éditeur d'Image - Snapshot")
-        self.root.geometry("900x950")
-        self.root.configure(bg="#2C2F33")
+class SnapshotEditor(tk.Tk):
+    def __init__(self):
+        super().__init__()
+        self.title("Éditeur d'Image - Frontend Pro")
+        self.geometry("1000x950")
+        self.configure(bg="#2C2F33")
         
         # Création d'un conteneur scrollable
-        container = tk.Frame(root, bg="#2C2F33")
-        container.pack(fill="both", expand=True)
-        
-        self.canvas_scroll = tk.Canvas(container, bg="#2C2F33")
-        scrollbar = tk.Scrollbar(container, orient="vertical", command=self.canvas_scroll.yview)
-        self.scrollable_frame = tk.Frame(self.canvas_scroll, bg="#2C2F33")
-        
+        container = tk.Frame(self, bg="#2C2F33")
+        container.pack(fill="both", expand=True, padx=10, pady=10)
+        canvas_scroll = tk.Canvas(container, bg="#2C2F33")
+        scrollbar = tk.Scrollbar(container, orient="vertical", command=canvas_scroll.yview)
+        self.scrollable_frame = tk.Frame(canvas_scroll, bg="#2C2F33")
         self.scrollable_frame.bind(
             "<Configure>",
-            lambda e: self.canvas_scroll.configure(
-                scrollregion=self.canvas_scroll.bbox("all")
-            )
+            lambda e: canvas_scroll.configure(scrollregion=canvas_scroll.bbox("all"))
         )
-        
-        self.canvas_scroll.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
-        self.canvas_scroll.configure(yscrollcommand=scrollbar.set)
-        
-        self.canvas_scroll.pack(side="left", fill="both", expand=True)
+        canvas_scroll.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        canvas_scroll.configure(yscrollcommand=scrollbar.set)
+        canvas_scroll.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
         
-        # --- Widgets dans le conteneur scrollable ---
+        # ----------------------------
+        # Colonne de gauche : Image et contrôles d'image
+        # ----------------------------
+        left_frame = tk.Frame(self.scrollable_frame, bg="#2C2F33")
+        left_frame.grid(row=0, column=0, sticky="nsew", padx=10)
+        
         # Canvas d'aperçu
-        self.canvas = tk.Canvas(self.scrollable_frame, width=PREVIEW_SIZE, height=PREVIEW_SIZE, bg="white")
+        self.canvas = tk.Canvas(left_frame, width=PREVIEW_SIZE, height=PREVIEW_SIZE, bg="white")
         self.canvas.pack(pady=10)
         
-        # Contrôles de déplacement et zoom
-        control_frame = tk.Frame(self.scrollable_frame, bg="#2C2F33")
-        control_frame.pack(pady=10)
-        tk.Button(control_frame, text="↑", command=lambda: self.move(0, -20), width=5).grid(row=0, column=1)
-        tk.Button(control_frame, text="←", command=lambda: self.move(-20, 0), width=5).grid(row=1, column=0)
-        tk.Button(control_frame, text="→", command=lambda: self.move(20, 0), width=5).grid(row=1, column=2)
-        tk.Button(control_frame, text="↓", command=lambda: self.move(0, 20), width=5).grid(row=2, column=1)
-        tk.Button(control_frame, text="+", command=self.zoom_in, width=5).grid(row=1, column=1, padx=10)
-        tk.Button(control_frame, text="-", command=self.zoom_out, width=5).grid(row=3, column=1)
+        # Bouton pour choisir l'image
+        self.btn_load = tk.Button(left_frame, text="Choisir une Image", command=self.load_image,
+                                  bg="#7289DA", fg="white", font=("Arial", 12, "bold"))
+        self.btn_load.pack(pady=5)
         
-        # Zone de saisie pour 3 textes avec boutons de contrôle et couleur
+        # Contrôles de déplacement et zoom
+        ctrl_frame = tk.Frame(left_frame, bg="#2C2F33")
+        ctrl_frame.pack(pady=10)
+        tk.Button(ctrl_frame, text="↑", command=lambda: self.move(0, -20), width=5).grid(row=0, column=1)
+        tk.Button(ctrl_frame, text="←", command=lambda: self.move(-20, 0), width=5).grid(row=1, column=0)
+        tk.Button(ctrl_frame, text="→", command=lambda: self.move(20, 0), width=5).grid(row=1, column=2)
+        tk.Button(ctrl_frame, text="↓", command=lambda: self.move(0, 20), width=5).grid(row=2, column=1)
+        tk.Button(ctrl_frame, text="+", command=self.zoom_in, width=5).grid(row=1, column=1, padx=10)
+        tk.Button(ctrl_frame, text="-", command=self.zoom_out, width=5).grid(row=3, column=1)
+        
+        # Panneau d'action
+        action_frame = tk.Frame(left_frame, bg="#2C2F33")
+        action_frame.pack(pady=10)
+        
+        # ----------------------------
+        # Colonne de droite : Paramétrage des textes
+        # ----------------------------
+        right_frame = tk.Frame(self.scrollable_frame, bg="#2C2F33")
+        right_frame.grid(row=0, column=1, sticky="nsew", padx=10)
         
         # Texte 1 (Elemental End italic, marge haute, couleur par défaut blanc)
-        self.text1_size_factor = 0.12
-        self.text1_margin = 0.50
+        self.text1_size_factor = 0.08
+        self.text1_margin = 0.65
         self.text1_color = "white"
-        frame1 = tk.Frame(self.scrollable_frame, bg="#2C2F33")
-        frame1.pack(pady=5)
-        tk.Label(frame1, text="Texte 1 (Elemental End italic, marge haute)", bg="#2C2F33", fg="white").grid(row=0, column=0, columnspan=5)
+        frame1 = tk.LabelFrame(right_frame, text="Texte 1 (Elemental End italic, marge haute)", bg="#2C2F33", fg="white", font=("Arial", 12, "bold"))
+        frame1.pack(fill="x", pady=5, padx=5)
         self.text_input1 = tk.Entry(frame1, font=("Arial", 14))
-        self.text_input1.grid(row=1, column=0, columnspan=4, pady=2)
-        self.text_input1.insert(0, "Votre texte 1 ici")
-        tk.Button(frame1, text="+T", command=lambda: self.adjust_text_size(1, 1), width=4).grid(row=2, column=0)
-        tk.Button(frame1, text="-T", command=lambda: self.adjust_text_size(1, -1), width=4).grid(row=2, column=1)
-        tk.Button(frame1, text="↑", command=lambda: self.adjust_margin(1, 1), width=4).grid(row=2, column=2)
-        tk.Button(frame1, text="↓", command=lambda: self.adjust_margin(1, -1), width=4).grid(row=2, column=3)
-        tk.Button(frame1, text="Couleur", command=lambda: self.choose_color(1), width=6).grid(row=2, column=4, padx=5)
+        self.text_input1.pack(fill="x", padx=5, pady=2)
+        self.text_input1.insert(0, "Text1")
+        btns1 = tk.Frame(frame1, bg="#2C2F33")
+        btns1.pack(pady=2)
+        tk.Button(btns1, text="+T", command=lambda: self.adjust_text_size(1, 1), width=4).grid(row=0, column=0, padx=2)
+        tk.Button(btns1, text="-T", command=lambda: self.adjust_text_size(1, -1), width=4).grid(row=0, column=1, padx=2)
+        tk.Button(btns1, text="↑", command=lambda: self.adjust_margin(1, 1), width=4).grid(row=0, column=2, padx=2)
+        tk.Button(btns1, text="↓", command=lambda: self.adjust_margin(1, -1), width=4).grid(row=0, column=3, padx=2)
+        tk.Button(btns1, text="Couleur", command=lambda: self.choose_color(1), width=6).grid(row=0, column=4, padx=2)
         
         # Texte 2 (Elemental End italic, couleur par défaut blanc)
-        self.text2_size_factor = 0.12
-        self.text2_margin = 0.20
+        self.text2_size_factor = 0.10
+        self.text2_margin = 0.45
         self.text2_color = "white"
-        frame2 = tk.Frame(self.scrollable_frame, bg="#2C2F33")
-        frame2.pack(pady=5)
-        tk.Label(frame2, text="Texte 2 (Elemental End italic)", bg="#2C2F33", fg="white").grid(row=0, column=0, columnspan=5)
+        frame2 = tk.LabelFrame(right_frame, text="Texte 2 (Elemental End italic)", bg="#2C2F33", fg="white", font=("Arial", 12, "bold"))
+        frame2.pack(fill="x", pady=5, padx=5)
         self.text_input2 = tk.Entry(frame2, font=("Arial", 14))
-        self.text_input2.grid(row=1, column=0, columnspan=4, pady=2)
-        self.text_input2.insert(0, "Votre texte 2 ici")
-        tk.Button(frame2, text="+T", command=lambda: self.adjust_text_size(2, 1), width=4).grid(row=2, column=0)
-        tk.Button(frame2, text="-T", command=lambda: self.adjust_text_size(2, -1), width=4).grid(row=2, column=1)
-        tk.Button(frame2, text="↑", command=lambda: self.adjust_margin(2, 1), width=4).grid(row=2, column=2)
-        tk.Button(frame2, text="↓", command=lambda: self.adjust_margin(2, -1), width=4).grid(row=2, column=3)
-        tk.Button(frame2, text="Couleur", command=lambda: self.choose_color(2), width=6).grid(row=2, column=4, padx=5)
+        self.text_input2.pack(fill="x", padx=5, pady=2)
+        self.text_input2.insert(0, "Text2")
+        btns2 = tk.Frame(frame2, bg="#2C2F33")
+        btns2.pack(pady=2)
+        tk.Button(btns2, text="+T", command=lambda: self.adjust_text_size(2, 1), width=4).grid(row=0, column=0, padx=2)
+        tk.Button(btns2, text="-T", command=lambda: self.adjust_text_size(2, -1), width=4).grid(row=0, column=1, padx=2)
+        tk.Button(btns2, text="↑", command=lambda: self.adjust_margin(2, 1), width=4).grid(row=0, column=2, padx=2)
+        tk.Button(btns2, text="↓", command=lambda: self.adjust_margin(2, -1), width=4).grid(row=0, column=3, padx=2)
+        tk.Button(btns2, text="Couleur", command=lambda: self.choose_color(2), width=6).grid(row=0, column=4, padx=2)
         
         # Texte 3 (Poppins Bold, couleur par défaut noir)
-        self.text3_size_factor = 0.12
-        self.text3_margin = 0.10
+        self.text3_size_factor = 0.06
+        self.text3_margin = 0.21
         self.text3_color = "black"
-        frame3 = tk.Frame(self.scrollable_frame, bg="#2C2F33")
-        frame3.pack(pady=5)
-        tk.Label(frame3, text="Texte 3 (Poppins Bold)", bg="#2C2F33", fg="white").grid(row=0, column=0, columnspan=5)
+        frame3 = tk.LabelFrame(right_frame, text="Texte 3 (Poppins Bold)", bg="#2C2F33", fg="white", font=("Arial", 12, "bold"))
+        frame3.pack(fill="x", pady=5, padx=5)
         self.text_input3 = tk.Entry(frame3, font=("Arial", 14))
-        self.text_input3.grid(row=1, column=0, columnspan=4, pady=2)
-        self.text_input3.insert(0, "Votre texte 3 ici")
-        tk.Button(frame3, text="+T", command=lambda: self.adjust_text_size(3, 1), width=4).grid(row=2, column=0)
-        tk.Button(frame3, text="-T", command=lambda: self.adjust_text_size(3, -1), width=4).grid(row=2, column=1)
-        tk.Button(frame3, text="↑", command=lambda: self.adjust_margin(3, 1), width=4).grid(row=2, column=2)
-        tk.Button(frame3, text="↓", command=lambda: self.adjust_margin(3, -1), width=4).grid(row=2, column=3)
-        tk.Button(frame3, text="Couleur", command=lambda: self.choose_color(3), width=6).grid(row=2, column=4, padx=5)
+        self.text_input3.pack(fill="x", padx=5, pady=2)
+        self.text_input3.insert(0, "Text3")
+        btns3 = tk.Frame(frame3, bg="#2C2F33")
+        btns3.pack(pady=2)
+        tk.Button(btns3, text="+T", command=lambda: self.adjust_text_size(3, 1), width=4).grid(row=0, column=0, padx=2)
+        tk.Button(btns3, text="-T", command=lambda: self.adjust_text_size(3, -1), width=4).grid(row=0, column=1, padx=2)
+        tk.Button(btns3, text="↑", command=lambda: self.adjust_margin(3, 1), width=4).grid(row=0, column=2, padx=2)
+        tk.Button(btns3, text="↓", command=lambda: self.adjust_margin(3, -1), width=4).grid(row=0, column=3, padx=2)
+        tk.Button(btns3, text="Couleur", command=lambda: self.choose_color(3), width=6).grid(row=0, column=4, padx=2)
         
         # Mise à jour automatique dès modification des champs de texte
         self.text_input1.bind("<KeyRelease>", lambda e: self.generate_final())
         self.text_input2.bind("<KeyRelease>", lambda e: self.generate_final())
         self.text_input3.bind("<KeyRelease>", lambda e: self.generate_final())
         
-        # Boutons d'action (dans le conteneur scrollable)
-        self.btn_load = tk.Button(self.scrollable_frame, text="Choisir une Image",
-                                  command=self.load_image,
-                                  bg="#7289DA", fg="white", font=("Arial", 12, "bold"))
-        self.btn_load.pack(pady=5)
-        self.btn_generate = tk.Button(self.scrollable_frame, text="Générer avec Watermark",
-                                      command=self.generate_final,
+        # Boutons d'action en bas de la colonne de droite
+        action_frame = tk.Frame(right_frame, bg="#2C2F33")
+        action_frame.pack(pady=10)
+        self.btn_generate = tk.Button(action_frame, text="Générer avec Watermark", command=self.generate_final,
                                       bg="#99AAB5", fg="white", font=("Arial", 12, "bold"), state=tk.DISABLED)
-        self.btn_generate.pack(pady=5)
-        self.btn_save_no = tk.Button(self.scrollable_frame, text="Enregistrer sans Watermark",
-                                     command=self.save_no_watermark,
-                                     bg="#43B581", fg="white", font=("Arial", 12, "bold"), state=tk.DISABLED)
-        self.btn_save_no.pack(pady=5)
-        self.btn_save_yes = tk.Button(self.scrollable_frame, text="Enregistrer avec Watermark",
-                                      command=self.save_with_watermark,
+        self.btn_generate.grid(row=0, column=0, padx=5, pady=5)
+        self.btn_save_yes = tk.Button(action_frame, text="Enregistrer avec Watermark", command=self.save_with_watermark,
                                       bg="#F04747", fg="white", font=("Arial", 12, "bold"), state=tk.DISABLED)
-        self.btn_save_yes.pack(pady=5)
+        self.btn_save_yes.grid(row=2, column=0, padx=5, pady=5)
         
-        # Variables pour l'image et son affichage
+        # ----------------------------
+        # Variables d'image et positionnement
+        # ----------------------------
         self.source_image = None
         self.current_preview = None
         self.tk_preview = None
         
-        # Position et zoom dans l'aperçu
         self.offset_x = 0
         self.offset_y = 0
         self.zoom = 1.0
@@ -141,7 +150,6 @@ class SnapshotEditor:
             self.watermark = None
             print("⚠️  Fichier 'watermark.png' introuvable.")
         
-        # Stockage des rendus finaux
         self.final_no_wm = None
         self.final_with_wm = None
 
@@ -155,6 +163,7 @@ class SnapshotEditor:
         self.offset_y = 0
         self.zoom = 1.0
         self.update_preview()
+        self.generate_final()  # Actualisation automatique du rendu final
         self.btn_generate.config(state=tk.NORMAL)
         self.btn_save_no.config(state=tk.NORMAL)
 
@@ -320,6 +329,5 @@ class SnapshotEditor:
         self.generate_final()
 
 if __name__ == "__main__":
-    root = tk.Tk()
-    app = SnapshotEditor(root)
-    root.mainloop()
+    app = SnapshotEditor()
+    app.mainloop()
